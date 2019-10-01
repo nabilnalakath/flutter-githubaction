@@ -2,7 +2,7 @@ on: push
 name: Test, Build and Release apk
 jobs:
   build:
-    name: install dependencies
+    name: Build APK
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
