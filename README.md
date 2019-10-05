@@ -14,4 +14,4 @@ This project uses the following github actions -
 * https://github.com/marketplace/actions/flutter-action
 * https://github.com/marketplace/actions/create-release
 
-For a complete guide on implemenatation read the tutorial on [Medium]()
+For a complete guide on implemenatation read the tutorial on [Medium](https://medium.com/better-programming/ci-cd-for-flutter-apps-using-github-actions-b833f8f7aac)
