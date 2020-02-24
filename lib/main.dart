@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Git Hub Actions Sample App'),
+      home: MyHomePage(title: 'Git Hub Actions Sample App with Github Cli'),
     );
   }
 }
