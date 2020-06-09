@@ -1,4 +1,4 @@
-Project Featured on the official [Flutter Webiste](https://flutter.dev/docs/deployment/cd).
+Project Featured on the official [Flutter Website](https://flutter.dev/docs/deployment/cd).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
