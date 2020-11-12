@@ -1,4 +1,10 @@
-on: push
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 name: Test, Build and Release apk
 jobs:
   build:
