@@ -1,4 +1,10 @@
-on: push
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 name: Test, Build and Release apk
 jobs:
   build:
@@ -20,3 +26,5 @@ jobs:
       with:
         artifacts: "build/app/outputs/apk/debug/*.apk"
         token: ${{ secrets.TOKEN }}
+        commit: master
+        tag: v1.0.${{ github.run_number }}
