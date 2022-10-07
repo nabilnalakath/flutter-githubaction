@@ -1,5 +1,5 @@
 on: push
-name: Test, Build and Release apk
+name: Build and Release Development apk
 jobs:
   build:
     name: Build APK
@@ -19,4 +19,3 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         artifacts: "build/app/outputs/apk/debug/*.apk"
-        token: ${{ secrets.TOKEN }}
