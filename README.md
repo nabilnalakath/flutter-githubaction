@@ -1,16 +1,17 @@
-# flutter_githubaction
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A new Flutter project.
+![](https://github.com/nabilnalakath/flutter-action/workflows/main.yml/badge.svg)
+[![pub package](https://img.shields.io/pub/v/badge.svg)](https://pub.dartlang.org/packages/badge)
 
-## Getting Started
+# Github Action in Flutter Project
 
-This project is a starting point for a Flutter application.
+This is a sample flutter project with CI-CD configuration using Github Actions.
 
-A few resources to get you started if this is your first Flutter project:
+This project uses the following github actions -
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+* https://github.com/actions/checkout
+* https://github.com/actions/setup-java
+* https://github.com/marketplace/actions/flutter-action
+* https://github.com/marketplace/actions/create-release
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For a complete guide on implemenatation read the tutorial on [Medium](https://medium.com/better-programming/ci-cd-for-flutter-apps-using-github-actions-b833f8f7aac)
