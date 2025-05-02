@@ -6,10 +6,10 @@ permissions:
 
 on:
   push:
-    branches: [ main ]
+    branches: [ 2025-update ]
     tags:    [ 'v*.*.*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ 2025-update ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
