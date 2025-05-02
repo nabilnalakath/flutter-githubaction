@@ -1,6 +1,5 @@
 name: 🛠 Android CI / Build & Release APK
 
-# Run on pushes and PRs to your branch, and on tag pushes v*.*.*
 on:
   push:
     branches: [ 2025-update, main ]
@@ -8,10 +7,9 @@ on:
   pull_request:
     branches: [ 2025-update, main ]
 
-# Let the runner pull actions from the Marketplace
 permissions:
-  contents: read    # checkout your code
-  actions: read     # download any actions/*@* if you ever need them
+  contents: read    # to checkout your code
+  actions: read     # to pull marketplace actions, if needed
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,7 +23,7 @@ jobs:
       - name: 📂 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🚀 Cache pub dependencies
+      - name: 🚀 Cache pub deps
         uses: actions/cache@v3
         with:
           path: ~/.pub-cache
@@ -49,7 +47,7 @@ jobs:
       - name: ✅ Run tests
         run: flutter test --coverage
 
-      - name: 🏗️ Build APKs (all ABIs)
+      - name: 🏗️ Build APKs
         run: flutter build apk --release --split-per-abi
 
       - name: 📦 Prepare artifacts
@@ -57,25 +55,11 @@ jobs:
           mkdir -p artifacts
           cp build/app/outputs/flutter-apk/*.apk artifacts/
 
-      # — only on tag pushes (refs/tags/v*) —
-      - name: 🔧 Install GitHub CLI
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gh
-
-      - name: 🔐 Authenticate GitHub CLI
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "${GITHUB_TOKEN}" | gh auth login --with-token
-
+      # ─────────────── ONLY ON TAGS ───────────────
       - name: 🏷️ Create or update Release
         if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          gh release view ${{ github.ref_name }} \
-            || gh release create ${{ github.ref_name }} --notes "Release ${{ github.ref_name }}"
-
-      - name: 📤 Upload APKs to Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: gh release upload ${{ github.ref_name }} artifacts/*.apk --clobber
+        uses: ncipollo/release-action@v1.16.0
+        with:
+          tag: ${{ github.ref_name }}
+          artifacts: artifacts/*.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
