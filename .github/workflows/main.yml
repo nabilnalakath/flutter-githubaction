@@ -1,60 +1,81 @@
-name: 🛠 CI / Build / Release APK
+name: 🛠 Android CI / Build & Release APK
 
-permissions:
-  contents: read
-  actions: read
-
+# Run on pushes and PRs to your branch, and on tag pushes v*.*.*
 on:
   push:
-    branches: [ 2025-update ]
+    branches: [ 2025-update, main ]
     tags:    [ 'v*.*.*' ]
   pull_request:
-    branches: [ 2025-update ]
+    branches: [ 2025-update, main ]
+
+# Let the runner pull actions from the Marketplace
+permissions:
+  contents: read    # checkout your code
+  actions: read     # download any actions/*@* if you ever need them
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  build_and_release:
     runs-on: ubuntu-latest
-    strategy:
-      matrix: { abi: [armeabi-v7a, arm64-v8a, x86_64] }
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - name: 📂 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🚀 Cache pub dependencies
+        uses: actions/cache@v3
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
-      - uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - run: flutter pub get
-      - run: flutter test --coverage
-      - run: flutter build apk --release --target-platform=android-${{ matrix.abi }}
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: app-${{ matrix.abi }}.apk
-          path: build/app/outputs/flutter-apk/app-*-${{ matrix.abi }}.apk
+          restore-keys: ${{ runner.os }}-pub-
 
-  release:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download APK artifacts
-        uses: actions/download-artifact@v2
+      - name: ☕️ Setup Java (Temurin 17)
+        uses: actions/setup-java@v3
         with:
-          path: artifacts/
-      - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
+          distribution: temurin
+          java-version: '17'
+
+      - name: 🦋 Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          tag: ${{ github.ref_name }}
-          artifacts: artifacts/*.apk
-          token: ${{ secrets.GITHUB_TOKEN }}
+          channel: stable
+
+      - name: 📥 Get dependencies
+        run: flutter pub get
+
+      - name: ✅ Run tests
+        run: flutter test --coverage
+
+      - name: 🏗️ Build APKs (all ABIs)
+        run: flutter build apk --release --split-per-abi
+
+      - name: 📦 Prepare artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/*.apk artifacts/
+
+      # — only on tag pushes (refs/tags/v*) —
+      - name: 🔧 Install GitHub CLI
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: 🔐 Authenticate GitHub CLI
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${GITHUB_TOKEN}" | gh auth login --with-token
+
+      - name: 🏷️ Create or update Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          gh release view ${{ github.ref_name }} \
+            || gh release create ${{ github.ref_name }} --notes "Release ${{ github.ref_name }}"
+
+      - name: 📤 Upload APKs to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: gh release upload ${{ github.ref_name }} artifacts/*.apk --clobber
