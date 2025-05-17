@@ -1,6 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![](https://github.com/nabilnalakath/flutter-action/workflows/main.yml/badge.svg)
-[![pub package](https://img.shields.io/pub/v/badge.svg)](https://pub.dartlang.org/packages/badge)
+![Dart SDK](https://img.shields.io/badge/Dart-3.7.2-blue)  # Adjust Dart version if needed
+![Flutter](https://img.shields.io/badge/Flutter-stable-blue)
+
 ![Last Updated](https://img.shields.io/badge/Last%20Updated-May%202025-blue)
 
 # Github Action in Flutter Project
