@@ -46,9 +46,11 @@ android {
         release {
             val keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath != null && file(keystorePath).exists()) {
+                println("🚀 SIGNING WITH CUSTOM SECURE RELEASE KEY!")
                 signingConfig = signingConfigs.getByName("release")
             } else {
                 // Fallback to debug keys if secrets are not provided
+                println("⚠️ NO SECURE KEY FOUND. SIGNING WITH DEFAULT DEBUG KEY.")
                 signingConfig = signingConfigs.getByName("debug")
             }
         }
