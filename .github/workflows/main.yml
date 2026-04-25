@@ -48,11 +48,14 @@ jobs:
         run: flutter test --coverage
 
       - name: 🔐 Decode Keystore
-        if: "${{ secrets.KEYSTORE_BASE64 != '' }}"
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo $KEYSTORE_BASE64 | base64 --decode > android/app/upload-keystore.jks
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo $KEYSTORE_BASE64 | base64 --decode > android/app/upload-keystore.jks
+          else
+            echo "No KEYSTORE_BASE64 secret provided, skipping secure signing setup."
+          fi
 
       - name: 🏗️ Build APKs
         env:
