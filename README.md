@@ -43,9 +43,9 @@ To automatically sign your release APK with your own keystore using this GitHub 
      ```
 3. **Add GitHub Secrets** to your repository (Settings -> Secrets and variables -> Actions):
    - `KEYSTORE_BASE64`: The contents of the `keystore.txt` file you just created.
-   - `KEYSTORE_PASSWORD`: The password for your keystore.
-   - `KEY_ALIAS`: Your key alias.
-   - `KEY_PASSWORD`: The password for your key.
+   - `KEYSTORE_PASSWORD`: The keystore password you typed when running the `keytool` command.
+   - `KEY_ALIAS`: The alias you used (e.g., `upload` if you copied the command exactly).
+   - `KEY_PASSWORD`: The key password you typed when running the `keytool` command.
 
 The GitHub action will automatically detect these secrets and use them to securely sign the release APK. If these secrets are not provided, it will gracefully fall back to the default debug signing keys.
 
