@@ -47,3 +47,19 @@ app.*.map.json
 # Secure signing files
 *.jks
 keystore.txt
+
+# Fastlane output and local Bundler settings
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+**/.bundle/
+**/vendor/bundle/
+*.ipa
+*.dSYM.zip
+
+# Never commit store credentials or signing files
+*.p8
+*.p12
+*.cer
+*.mobileprovision

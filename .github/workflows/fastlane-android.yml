@@ -1,0 +1,189 @@
+name: Fastlane · Android
+
+# Optional: builds a signed app bundle and uploads it to Google Play with Fastlane.
+# Does nothing costly until PLAY_STORE_JSON_KEY is set. See "Fastlane" in the README.
+#
+#   Pull requests that change Android Fastlane files: build the app bundle and load the lanes
+#   Tags vX.Y.Z:                                      build, sign and upload (when secrets are set)
+#   Manual run (Actions tab):                         check credentials, or deploy
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'android/Gemfile'
+      - 'android/Gemfile.lock'
+      - 'android/fastlane/**'
+      - '.github/workflows/fastlane-android.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = verify Google Play access only, deploy = build and upload'
+        type: choice
+        options: [ check, deploy ]
+        default: check
+      track:
+        description: 'Google Play track (deploy only)'
+        type: choice
+        options: [ internal, alpha, beta, production ]
+        default: internal
+      release_status:
+        description: 'Release status (deploy only). Keep "draft" until the app has been published once.'
+        type: choice
+        options: [ draft, completed ]
+        default: draft
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+    steps:
+      - name: 🔎 Decide what to run
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          HAS_PLAY_KEY: ${{ secrets.PLAY_STORE_JSON_KEY != '' }}
+          HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEYSTORE_PASSWORD != '' && secrets.KEY_ALIAS != '' && secrets.KEY_PASSWORD != '' }}
+        run: |
+          case "$EVENT" in
+            pull_request)      mode=build ;;
+            workflow_dispatch) mode="$INPUT_MODE" ;;
+            push)
+              if [ "$HAS_PLAY_KEY" = "true" ]; then
+                mode=deploy
+              else
+                echo "::notice::PLAY_STORE_JSON_KEY is not set, so the Google Play upload is skipped."
+                mode=skip
+              fi ;;
+          esac
+
+          if [ "$mode" = "check" ] || [ "$mode" = "deploy" ]; then
+            if [ "$HAS_PLAY_KEY" != "true" ]; then
+              echo "::error::PLAY_STORE_JSON_KEY is not set. Add it under Settings → Secrets and variables → Actions."
+              exit 1
+            fi
+          fi
+          if [ "$mode" = "deploy" ] && [ "$HAS_KEYSTORE" != "true" ]; then
+            echo "::error::Google Play only accepts bundles signed with your upload key. Set KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD."
+            exit 1
+          fi
+
+          echo "Mode: $mode"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android
+    needs: plan
+    if: needs.plan.outputs.mode != 'skip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      FASTLANE_SKIP_UPDATE_CHECK: 'true'
+
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v6
+
+      - name: 💎 Setup Ruby and Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+          working-directory: android
+
+      - name: 📋 Load Fastlane lanes
+        working-directory: android
+        run: bundle exec fastlane lanes
+
+      - name: 🔑 Check Google Play access
+        if: env.MODE == 'check'
+        working-directory: android
+        env:
+          PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          PLAY_TRACK: ${{ inputs.track }}
+        run: bundle exec fastlane validate
+
+      - name: ☕️ Setup Java (Temurin 17)
+        if: env.MODE != 'check'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: 🦋 Setup Flutter
+        if: env.MODE != 'check'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 📥 Get dependencies
+        if: env.MODE != 'check'
+        run: flutter pub get
+
+      - name: 🔢 Set version
+        if: env.MODE != 'check'
+        id: version
+        env:
+          BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET }}
+        run: |
+          # Both stores reject a build number they have already seen.
+          build_number=$(( GITHUB_RUN_NUMBER + ${BUILD_NUMBER_OFFSET:-0} ))
+          args="--build-number=$build_number"
+
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Release tags must look like v1.2.3 (got $GITHUB_REF_NAME)."
+              exit 1
+            fi
+            args="$args --build-name=${GITHUB_REF_NAME#v}"
+          fi
+
+          echo "Version arguments: $args"
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      - name: 🔐 Decode Keystore
+        if: env.MODE == 'deploy'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+
+      # Pull requests only check that the bundle builds, so no secrets are used
+      # and Gradle signs it with the debug key.
+      - name: 🏗️ Build app bundle
+        if: env.MODE == 'build'
+        run: flutter build appbundle --release ${{ steps.version.outputs.args }}
+
+      - name: 🏗️ Build signed app bundle
+        if: env.MODE == 'deploy'
+        env:
+          KEYSTORE_PATH: "upload-keystore.jks"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: flutter build appbundle --release ${{ steps.version.outputs.args }}
+
+      - name: 🚀 Upload to Google Play
+        if: env.MODE == 'deploy'
+        working-directory: android
+        env:
+          PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          PLAY_TRACK: ${{ inputs.track || vars.PLAY_TRACK || 'internal' }}
+          PLAY_RELEASE_STATUS: ${{ inputs.release_status || vars.PLAY_RELEASE_STATUS || 'draft' }}
+        run: bundle exec fastlane deploy
