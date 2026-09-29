@@ -79,3 +79,10 @@ jobs:
           name:      Release ${{ github.ref_name }}
           artifacts: artifacts/*.apk
           token:     ${{ secrets.GITHUB_TOKEN }}
+          # Update the release if it already exists (e.g. on a re-run),
+          # replacing the APKs but keeping its name, notes and flags.
+          allowUpdates:               true
+          omitNameDuringUpdate:       true
+          omitBodyDuringUpdate:       true
+          omitDraftDuringUpdate:      true
+          omitPrereleaseDuringUpdate: true
