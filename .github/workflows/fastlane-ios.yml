@@ -1,0 +1,173 @@
+name: Fastlane · iOS
+
+# Optional: builds a signed iOS release and uploads it to TestFlight with Fastlane.
+# Does nothing costly (no macOS runner) until the iOS secrets are set. See "Fastlane" in the README.
+#
+#   Pull requests that change iOS Fastlane files: build the app (unsigned) and load the lanes
+#   Tags vX.Y.Z:                                  build, sign and upload (when secrets are set)
+#   Manual run (Actions tab):                     check credentials, or deploy
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'ios/Gemfile'
+      - 'ios/Gemfile.lock'
+      - 'ios/fastlane/**'
+      - '.github/workflows/fastlane-ios.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = verify App Store Connect access and signing only, deploy = build and upload to TestFlight'
+        type: choice
+        options: [ check, deploy ]
+        default: check
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+    steps:
+      - name: 🔎 Decide what to run
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          HAS_APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID != '' }}
+          HAS_APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID != '' }}
+          HAS_APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 != '' }}
+          HAS_MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL != '' }}
+          HAS_MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD != '' }}
+          HAS_MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION != '' }}
+        run: |
+          missing=""
+          for name in APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_BASE64 \
+                      MATCH_GIT_URL MATCH_PASSWORD MATCH_GIT_BASIC_AUTHORIZATION; do
+            has="HAS_$name"
+            [ "${!has}" = "true" ] || missing="$missing $name"
+          done
+
+          case "$EVENT" in
+            pull_request)      mode=build ;;
+            workflow_dispatch) mode="$INPUT_MODE" ;;
+            push)
+              if [ "$HAS_APP_STORE_CONNECT_KEY_ID" = "true" ] || [ "$HAS_MATCH_GIT_URL" = "true" ]; then
+                mode=deploy
+              else
+                echo "::notice::The iOS secrets are not set, so the TestFlight upload is skipped."
+                mode=skip
+              fi ;;
+          esac
+
+          if { [ "$mode" = "check" ] || [ "$mode" = "deploy" ]; } && [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. Add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          echo "Mode: $mode"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+  ios:
+    name: iOS
+    needs: plan
+    if: needs.plan.outputs.mode != 'skip'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
+      FASTLANE_SKIP_UPDATE_CHECK: 'true'
+      # Fail instead of hanging if git asks for credentials (match repository).
+      GIT_TERMINAL_PROMPT: '0'
+
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v6
+
+      - name: 💎 Setup Ruby and Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+          working-directory: ios
+
+      - name: 📋 Load Fastlane lanes
+        working-directory: ios
+        run: bundle exec fastlane lanes
+
+      - name: 🔑 Check App Store Connect access and signing
+        if: env.MODE == 'check'
+        working-directory: ios
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+        run: bundle exec fastlane validate
+
+      - name: 🦋 Setup Flutter
+        if: env.MODE != 'check'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 📥 Get dependencies
+        if: env.MODE != 'check'
+        run: flutter pub get
+
+      - name: 🔢 Set version
+        if: env.MODE != 'check'
+        id: version
+        env:
+          BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET }}
+        run: |
+          # Both stores reject a build number they have already seen.
+          build_number=$(( GITHUB_RUN_NUMBER + ${BUILD_NUMBER_OFFSET:-0} ))
+          args="--build-number=$build_number"
+
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Release tags must look like v1.2.3 (got $GITHUB_REF_NAME)."
+              exit 1
+            fi
+            args="$args --build-name=${GITHUB_REF_NAME#v}"
+          fi
+
+          echo "Version arguments: $args"
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      # Pull requests only check that the app builds, so nothing is signed.
+      - name: 🏗️ Build app (unsigned)
+        if: env.MODE == 'build'
+        run: flutter build ios --release --no-codesign ${{ steps.version.outputs.args }}
+
+      - name: ⚙️ Generate Xcode configuration
+        if: env.MODE == 'deploy'
+        run: flutter build ios --release --no-codesign --config-only ${{ steps.version.outputs.args }}
+
+      - name: 🚀 Build, sign and upload to TestFlight
+        if: env.MODE == 'deploy'
+        working-directory: ios
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+        run: bundle exec fastlane beta
