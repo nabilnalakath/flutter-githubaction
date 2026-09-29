@@ -98,6 +98,9 @@ jobs:
     steps:
       - name: 📂 Checkout code
         uses: actions/checkout@v6
+        with:
+          # Nothing here pushes, so don't leave the GitHub token in the git config.
+          persist-credentials: false
 
       - name: 💎 Setup Ruby and Fastlane
         uses: ruby/setup-ruby@v1

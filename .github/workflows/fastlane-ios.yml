@@ -91,10 +91,18 @@ jobs:
       FASTLANE_SKIP_UPDATE_CHECK: 'true'
       # Fail instead of hanging if git asks for credentials (match repository).
       GIT_TERMINAL_PROMPT: '0'
+      # fastlane gives `xcodebuild -showBuildSettings` 3 seconds by default, which
+      # is often too short on hosted macOS runners (especially while resolving
+      # Swift packages).
+      FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: '60'
+      FASTLANE_XCODEBUILD_SETTINGS_RETRIES: '4'
 
     steps:
       - name: 📂 Checkout code
         uses: actions/checkout@v6
+        with:
+          # Nothing here pushes, so don't leave the GitHub token in the git config.
+          persist-credentials: false
 
       - name: 💎 Setup Ruby and Fastlane
         uses: ruby/setup-ruby@v1
