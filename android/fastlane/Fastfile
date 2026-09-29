@@ -1,0 +1,62 @@
+# Fastlane lanes for the Android app.
+#
+# Build the release app bundle with Flutter first, then run a lane:
+#
+#   flutter build appbundle --release
+#   cd android && bundle exec fastlane deploy
+#
+# In CI this is done by .github/workflows/fastlane-android.yml.
+# Setup steps and required secrets: see docs/fastlane.md.
+
+default_platform(:android)
+
+SETUP_HINT = "See docs/fastlane.md for setup steps.".freeze
+
+# Built by `flutter build appbundle --release`, relative to this Fastfile.
+AAB_PATH = File.expand_path("../../build/app/outputs/bundle/release/app-release.aab", __dir__).freeze
+
+def required_env(name)
+  value = ENV[name].to_s
+  UI.user_error!("#{name} is not set. Add it as a repository secret. #{SETUP_HINT}") if value.strip.empty?
+  value
+end
+
+def optional_env(name)
+  value = ENV[name].to_s.strip
+  value.empty? ? nil : value
+end
+
+platform :android do
+  desc "Check that the service account can access the app on Google Play (uploads nothing)"
+  lane :validate do
+    # Opens a read-only edit on the app and discards it, so this fails if the
+    # key is invalid or the service account has no access to the app.
+    # (validate_play_store_json_key only logs errors and never fails.)
+    google_play_track_version_codes(
+      json_key_data: required_env("PLAY_STORE_JSON_KEY"),
+      track: optional_env("PLAY_TRACK") || "internal"
+    )
+    UI.success("Google Play access confirmed.")
+  end
+
+  desc "Upload the release app bundle to a Google Play track"
+  desc "Options: track (default: internal), release_status (default: draft)"
+  lane :deploy do |options|
+    unless File.exist?(AAB_PATH)
+      UI.user_error!("No app bundle at #{AAB_PATH}. Run `flutter build appbundle --release` first.")
+    end
+
+    upload_to_play_store(
+      json_key_data: required_env("PLAY_STORE_JSON_KEY"),
+      aab: AAB_PATH,
+      track: options[:track] || optional_env("PLAY_TRACK") || "internal",
+      # Google Play only accepts "draft" until the app has been published once.
+      release_status: options[:release_status] || optional_env("PLAY_RELEASE_STATUS") || "draft",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

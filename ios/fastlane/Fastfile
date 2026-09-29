@@ -1,0 +1,94 @@
+# Fastlane lanes for the iOS app.
+#
+# Generate the Xcode configuration with Flutter first, then run a lane:
+#
+#   flutter build ios --release --no-codesign --config-only
+#   cd ios && bundle exec fastlane beta
+#
+# In CI this is done by .github/workflows/fastlane-ios.yml.
+# Setup steps and required secrets: see docs/fastlane.md.
+
+default_platform(:ios)
+
+SETUP_HINT = "See docs/fastlane.md for setup steps.".freeze
+
+IOS_DIR = File.expand_path("..", __dir__).freeze
+APP_IDENTIFIER = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+
+def required_env(name)
+  value = ENV[name].to_s
+  UI.user_error!("#{name} is not set. Add it as a repository secret. #{SETUP_HINT}") if value.strip.empty?
+  value
+end
+
+platform :ios do
+  # Returns an App Store Connect API key built from the repository secrets.
+  private_lane :connect do
+    # On CI: creates a temporary keychain and puts match in readonly mode.
+    setup_ci
+
+    app_store_connect_api_key(
+      key_id: required_env("APP_STORE_CONNECT_KEY_ID"),
+      issuer_id: required_env("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: required_env("APP_STORE_CONNECT_KEY_BASE64"),
+      is_key_content_base64: true
+    )
+  end
+
+  # Installs the App Store certificate and provisioning profile from the
+  # match repository.
+  private_lane :install_signing do |options|
+    required_env("MATCH_GIT_URL")
+    required_env("MATCH_PASSWORD")
+    # readonly: never creates or revokes certificates. Create them once
+    # locally with `bundle exec fastlane match appstore`.
+    match(type: "appstore", readonly: true, api_key: options[:api_key])
+  end
+
+  desc "Check App Store Connect access and code signing (uploads nothing)"
+  lane :validate do
+    api_key = connect
+    # Read-only App Store Connect request: fails if the key is invalid or the
+    # app record doesn't exist yet.
+    latest_testflight_build_number(api_key: api_key, app_identifier: APP_IDENTIFIER, initial_build_number: 0)
+    install_signing(api_key: api_key)
+    UI.success("App Store Connect access and code signing confirmed.")
+  end
+
+  desc "Build a signed release and upload it to TestFlight"
+  lane :beta do
+    api_key = connect
+    install_signing(api_key: api_key)
+
+    # match exports the details of the profile it installed.
+    profile = "sigh_#{APP_IDENTIFIER}_appstore"
+
+    # Switch the Runner target's Release configuration to manual signing with
+    # that profile. This edits Runner.xcodeproj in the working copy (CI discards
+    # it after the run; locally, revert it with git if you don't want to keep it).
+    update_code_signing_settings(
+      path: File.join(IOS_DIR, "Runner.xcodeproj"),
+      targets: ["Runner"],
+      build_configurations: ["Release"],
+      use_automatic_signing: false,
+      team_id: ENV["#{profile}_team-id"],
+      code_sign_identity: ENV["#{profile}_certificate-name"],
+      profile_name: ENV["#{profile}_profile-name"]
+    )
+
+    build_app(
+      workspace: File.join(IOS_DIR, "Runner.xcworkspace"),
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: File.expand_path("../build/ios/fastlane", IOS_DIR),
+      output_name: "Runner.ipa"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      # Apple takes a while to process builds; don't keep the runner waiting.
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

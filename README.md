@@ -1,22 +1,32 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![](https://github.com/nabilnalakath/flutter-action/workflows/main.yml/badge.svg)
+[![Android CI](https://github.com/nabilnalakath/flutter-githubaction/actions/workflows/main.yml/badge.svg)](https://github.com/nabilnalakath/flutter-githubaction/actions/workflows/main.yml)
 ![Dart SDK](https://img.shields.io/badge/Dart-3.7.2-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-stable-blue)
-![Last Updated](https://img.shields.io/badge/Last%20Updated-May%202025-blue)
+![Last Updated](https://img.shields.io/badge/Last%20Updated-September%202026-blue)
 
 
-# Github Action in Flutter Project
+# GitHub Action in Flutter Project
 
-This is a sample flutter project with CI-CD configuration using Github Actions.
+A sample Flutter project with CI/CD on GitHub Actions: it runs tests, builds signed APKs for GitHub Releases, and can optionally ship to Google Play and TestFlight with Fastlane.
 
-This project uses the following github actions -
+## Choose your path
+
+| I want to… | Use | Setup |
+|---|---|---|
+| Test, build signed APKs and attach them to a GitHub Release | `.github/workflows/main.yml` | [Secure Release Signing](#-secure-release-signing) |
+| Also ship to Google Play and/or TestFlight with Fastlane (optional) | `.github/workflows/fastlane-android.yml`, `.github/workflows/fastlane-ios.yml` | [docs/fastlane.md](docs/fastlane.md) |
+
+Use `main.yml` on its own, or add the Fastlane workflows next to it. The Fastlane workflows only build and upload once you add their secrets.
+
+This project uses the following GitHub Actions:
 
 * https://github.com/actions/checkout
 * https://github.com/actions/setup-java
 * https://github.com/marketplace/actions/flutter-action
 * https://github.com/marketplace/actions/create-release
+* https://github.com/ruby/setup-ruby (Fastlane workflows only)
 
-For a complete guide on implemenatation read the tutorial on [Medium](https://medium.com/better-programming/ci-cd-for-flutter-apps-using-github-actions-b833f8f7aac)
+For a complete guide on implementation, read the tutorial on [Medium](https://medium.com/better-programming/ci-cd-for-flutter-apps-using-github-actions-b833f8f7aac)
 
 ## 🔐 Secure Release Signing
 
@@ -51,3 +61,9 @@ The GitHub action will automatically detect these secrets and use them to secure
 
 > [!WARNING]
 > **Never commit your `.jks` keystore file, `keystore.txt`, or any of your passwords directly to your git repository!** Always add them securely via GitHub Secrets and make sure your `.gitignore` is configured to ignore `.jks` and `.txt` key files.
+
+## 🚀 Deploy to the stores with Fastlane (optional)
+
+The Fastlane workflows build, sign and upload the app to **Google Play** (`.github/workflows/fastlane-android.yml`) and **TestFlight** (`.github/workflows/fastlane-ios.yml`) when you push a `vX.Y.Z` tag, following the [Flutter continuous delivery guide](https://docs.flutter.dev/deployment/cd). The Android workflow reuses the signing secrets above, and both only build and upload once you add their store secrets.
+
+**Setup, secrets and usage: [docs/fastlane.md](docs/fastlane.md)**

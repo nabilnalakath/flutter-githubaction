@@ -1,0 +1,2 @@
+# Must match PRODUCT_BUNDLE_IDENTIFIER of the Runner target in ios/Runner.xcodeproj.
+app_identifier("com.example.flutterGithubaction")

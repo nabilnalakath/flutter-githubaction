@@ -1,0 +1,2 @@
+# Must match applicationId in android/app/build.gradle.kts.
+package_name("com.example.flutter_githubaction")
