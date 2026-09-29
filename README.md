@@ -135,6 +135,24 @@ Add these under **Settings → Secrets and variables → Actions**.
 | `PLAY_RELEASE_STATUS` | Variable (optional) | Android | `draft` (default) or `completed` |
 | `BUILD_NUMBER_OFFSET` | Variable (optional) | Both | Added to the build number, for apps whose store already has higher build numbers |
 
+### Keeping credentials safe
+
+The secrets above are stored encrypted by GitHub, are never passed to pull request runs, and only reach the steps that use them. A few more things are worth doing:
+
+- **The keystore is your upload key.** With [Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756) (the default for new apps), Google holds the key that signs your app for users. If the upload key leaks, you can ask Google to reset it in the Play Console.
+- **Give the service account only what it needs.** In the Play Console, grant it access to this app only, with permission to release to testing tracks (plus production, if you set `PLAY_TRACK=production`).
+- **Company Google accounts.** Google Cloud organizations created since 2024 block service-account key creation by default. In that case, use [Workload Identity Federation](https://github.com/google-github-actions/auth) instead of a JSON key; the workflow then needs an extra authentication step before the upload.
+- **The certificates repository token expires.** Fine-grained tokens have an expiry date. When iOS deploys start failing while match clones the repository, create a new token and update `MATCH_GIT_BASIC_AUTHORIZATION`. match can also use a read-only [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) (`MATCH_GIT_PRIVATE_KEY` with an SSH `MATCH_GIT_URL`) instead, which doesn't expire; that needs small changes to `fastlane-ios.yml`, which currently expects a token.
+- **Optionally, limit who can deploy.** Move the store secrets into a [GitHub environment](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment) with rules such as "only `v*` tags" or "require approval". Then add `environment: <name>` to the `android` / `ios` job in the workflow. Pull request builds would then also need to pass those rules, so this suits repos where only the maintainer opens PRs.
+
+### Other ways to sign iOS builds
+
+This repo uses match with a git repository, the approach the Flutter docs recommend. Other common setups:
+
+- **Certificate and profile as GitHub secrets.** Store the `.p12` and `.mobileprovision` as base64 secrets and replace `install_signing` in `ios/fastlane/Fastfile` with fastlane's `import_certificate` and `install_provisioning_profile` actions. There's no certificates repository, but renewing the certificate means updating the secrets by hand.
+- **match with cloud storage.** Set `storage_mode("google_cloud")` or `storage_mode("s3")` in `ios/fastlane/Matchfile` and provide that storage's credentials. Then remove the `MATCH_GIT_*` secrets from the lane and from the list `fastlane-ios.yml` checks.
+- **Xcode Cloud.** Apple builds, signs and uploads the app, so no certificates or fastlane are needed. See the [Xcode Cloud section of the Flutter docs](https://docs.flutter.dev/deployment/cd#xcode-cloud); you wouldn't use `fastlane-ios.yml`.
+
 ### Verify your setup
 
 Store uploads run against your own Google Play and App Store Connect accounts, so confirm your credentials before your first release:

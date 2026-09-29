@@ -3,5 +3,7 @@
 #   MATCH_GIT_URL                  HTTPS URL of that repository
 #   MATCH_PASSWORD                 passphrase used to encrypt it
 #   MATCH_GIT_BASIC_AUTHORIZATION  base64 of "username:token" (CI only)
+#                                  The token expires; when CI can't clone the
+#                                  repository any more, create a new one.
 storage_mode("git")
 type("appstore")

@@ -161,6 +161,8 @@ jobs:
           echo "Version arguments: $args"
           echo "args=$args" >> "$GITHUB_OUTPUT"
 
+      # This is your upload key. With Play App Signing, Google holds the actual
+      # app signing key and can reset a leaked upload key.
       - name: 🔐 Decode Keystore
         if: env.MODE == 'deploy'
         env:
