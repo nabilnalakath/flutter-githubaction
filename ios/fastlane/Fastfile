@@ -6,18 +6,18 @@
 #   cd ios && bundle exec fastlane beta
 #
 # In CI this is done by .github/workflows/fastlane-ios.yml.
-# Setup steps and required secrets: see "Fastlane" in the README.
+# Setup steps and required secrets: see docs/fastlane.md.
 
 default_platform(:ios)
 
-README_HINT = "See the Fastlane section of the README for setup steps.".freeze
+SETUP_HINT = "See docs/fastlane.md for setup steps.".freeze
 
 IOS_DIR = File.expand_path("..", __dir__).freeze
 APP_IDENTIFIER = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
 
 def required_env(name)
   value = ENV[name].to_s
-  UI.user_error!("#{name} is not set. Add it as a repository secret. #{README_HINT}") if value.strip.empty?
+  UI.user_error!("#{name} is not set. Add it as a repository secret. #{SETUP_HINT}") if value.strip.empty?
   value
 end
 

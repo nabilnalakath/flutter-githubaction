@@ -1,7 +1,7 @@
 name: Fastlane · iOS
 
 # Optional: builds a signed iOS release and uploads it to TestFlight with Fastlane.
-# Does nothing costly (no macOS runner) until the iOS secrets are set. See "Fastlane" in the README.
+# Does nothing costly (no macOS runner) until the iOS secrets are set. See docs/fastlane.md.
 #
 #   Pull requests that change iOS Fastlane files: build the app (unsigned) and load the lanes
 #   Tags vX.Y.Z:                                  build, sign and upload (when secrets are set)

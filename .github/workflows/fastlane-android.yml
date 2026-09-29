@@ -1,7 +1,7 @@
 name: Fastlane · Android
 
 # Optional: builds a signed app bundle and uploads it to Google Play with Fastlane.
-# Does nothing costly until PLAY_STORE_JSON_KEY is set. See "Fastlane" in the README.
+# Does nothing costly until PLAY_STORE_JSON_KEY is set. See docs/fastlane.md.
 #
 #   Pull requests that change Android Fastlane files: build the app bundle and load the lanes
 #   Tags vX.Y.Z:                                      build, sign and upload (when secrets are set)
