@@ -5,9 +5,9 @@
 ![Last Updated](https://img.shields.io/badge/Last%20Updated-September%202026-blue)
 
 
-# Github Action in Flutter Project
+# GitHub Action in Flutter Project
 
-This is a sample flutter project with CI-CD configuration using Github Actions.
+A sample Flutter project with CI/CD on GitHub Actions: it runs tests, builds signed APKs for GitHub Releases, and can optionally ship to Google Play and TestFlight with Fastlane.
 
 ## Choose your path
 
@@ -18,7 +18,7 @@ This is a sample flutter project with CI-CD configuration using Github Actions.
 
 Use `main.yml` on its own, or add the Fastlane workflows next to it. The Fastlane workflows only build and upload once you add their secrets.
 
-This project uses the following github actions -
+This project uses the following GitHub Actions:
 
 * https://github.com/actions/checkout
 * https://github.com/actions/setup-java
@@ -26,7 +26,7 @@ This project uses the following github actions -
 * https://github.com/marketplace/actions/create-release
 * https://github.com/ruby/setup-ruby (Fastlane workflows only)
 
-For a complete guide on implemenatation read the tutorial on [Medium](https://medium.com/better-programming/ci-cd-for-flutter-apps-using-github-actions-b833f8f7aac)
+For a complete guide on implementation, read the tutorial on [Medium](https://medium.com/better-programming/ci-cd-for-flutter-apps-using-github-actions-b833f8f7aac)
 
 ## 🔐 Secure Release Signing
 
