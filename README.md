@@ -16,7 +16,7 @@ This is a sample flutter project with CI-CD configuration using Github Actions.
 | Test, build signed APKs and attach them to a GitHub Release | `.github/workflows/main.yml` | [Secure Release Signing](#-secure-release-signing) |
 | Also ship to Google Play and/or TestFlight with Fastlane (optional) | `.github/workflows/fastlane-android.yml`, `.github/workflows/fastlane-ios.yml` | [Deploy to the stores with Fastlane](#-deploy-to-the-stores-with-fastlane-optional) |
 
-The two paths are independent. The Fastlane workflows don't change `main.yml`, and they do nothing costly until you add their secrets.
+Use `main.yml` on its own, or add the Fastlane workflows next to it. The Fastlane workflows only build and upload once you add their secrets.
 
 This project uses the following github actions -
 
@@ -152,7 +152,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-`main.yml` attaches the APKs to a GitHub Release as before, and each configured Fastlane workflow uploads to its store. The version name comes from the tag (`1.2.3`, so tags must look like `vX.Y.Z`) and the build number from the workflow's run number, so every upload gets a new one.
+`main.yml` attaches the APKs to a GitHub Release, and each configured Fastlane workflow uploads to its store. The version name comes from the tag (`1.2.3`, so tags must look like `vX.Y.Z`) and the build number from the workflow's run number, so every upload gets a new one.
 
 ### Run Fastlane locally
 
@@ -190,4 +190,4 @@ Then follow the setup steps above for your own package name and bundle identifie
 
 ### Not using Fastlane?
 
-Nothing else depends on it. Delete `.github/workflows/fastlane-android.yml`, `.github/workflows/fastlane-ios.yml`, `android/fastlane/`, `android/Gemfile*`, `ios/fastlane/` and `ios/Gemfile*`, and `main.yml` keeps working exactly as before.
+Nothing else depends on it. Delete `.github/workflows/fastlane-android.yml`, `.github/workflows/fastlane-ios.yml`, `android/fastlane/`, `android/Gemfile*`, `ios/fastlane/` and `ios/Gemfile*`, and `main.yml` works on its own.
